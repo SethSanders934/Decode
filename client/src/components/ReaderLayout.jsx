@@ -29,9 +29,12 @@ export default function ReaderLayout({
   const [depth, setDepth] = useLocalStorage(DEPTH_KEY, 'standard');
   const demoExplainTriggeredRef = useRef(false);
   const demoKeyRef = useRef(null);
-  const demoSettingTipShownRef = useRef(false);
+  const depthRef = useRef(depth);
+  const demoTimeoutsRef = useRef([]);
   const [demoTooltip, setDemoTooltip] = useState(null);
   const [showDemoSettingsTip, setShowDemoSettingsTip] = useState(false);
+
+  depthRef.current = depth;
 
   const {
     explanations,
@@ -202,61 +205,78 @@ export default function ReaderLayout({
     [article, depth, requestExplanation, clearSelection, saveExplanation]
   );
 
-  // Demo mode: auto-select first two paragraphs, set ELI5, then trigger explain.
+  // Demo mode: timed sequence — wait 1s, welcome 3s, select paragraphs (message 3s, select at 1s and 2s), then depth/explain, then theme tip 5s after "Getting..." is gone.
   useEffect(() => {
     if (!isDemo || !article?.paragraphs?.length) return;
-    setDemoTooltip('Loading your article…');
-    const t1 = setTimeout(() => {
-      setDemoTooltip('Selecting the first two paragraphs…');
-      setSelectedIndices(new Set([0, 1]));
-      setDepth('eli5');
-    }, 1200);
-    const t2 = setTimeout(() => setDemoTooltip('Choosing ELI5 for a simple summary…'), 2200);
-    const t3 = setTimeout(() => setDemoTooltip('Getting your explanation…'), 3200);
-    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
-  }, [isDemo, article?.paragraphs?.length, setDepth]);
 
-  useEffect(() => {
-    if (!isDemo || !article || selectedIndices.size !== 2 || demoExplainTriggeredRef.current) return;
-    if (!selectedIndices.has(0) || !selectedIndices.has(1)) return;
-    demoExplainTriggeredRef.current = true;
-    const sorted = [0, 1];
-    const text = sorted.map((i) => article.paragraphs[i]).join('\n\n');
-    const key = `group-demo-${Date.now()}`;
-    demoKeyRef.current = key;
-    setParagraphOrder((prev) => [...prev, key]);
-    requestExplanation({
-      key,
-      type: 'paragraph',
-      text,
-      context: article.fullText,
-      title: article.title,
-      depth: 'eli5',
-      onComplete: (k, data) => {
-        const aid = currentArticleIdRef.current;
-        if (aid) saveExplanation(aid, 'paragraph', text, data.depth, data.explanation, data.concepts);
-      },
-    });
-    setSelectedIndices(new Set());
-    setTimeout(() => {
-      const el = explanationScrollRef.current[key];
-      el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 400);
-  }, [isDemo, article, selectedIndices, requestExplanation, saveExplanation]);
+    const ids = demoTimeoutsRef.current;
+    ids.length = 0;
+    const add = (id) => { ids.push(id); return id; };
 
-  // When demo explanation finishes streaming, show the settings tip once.
-  useEffect(() => {
-    if (!isDemo || !demoKeyRef.current || demoSettingTipShownRef.current) return;
-    const key = demoKeyRef.current;
-    const data = explanations[key];
-    if (!data || data.streaming) return;
-    demoSettingTipShownRef.current = true;
-    const t = setTimeout(() => {
-      setDemoTooltip(null);
-      setShowDemoSettingsTip(true);
-    }, 800);
-    return () => clearTimeout(t);
-  }, [isDemo, explanations]);
+    const runExplain = () => {
+      if (demoExplainTriggeredRef.current) return;
+      demoExplainTriggeredRef.current = true;
+      const sorted = [0, 1];
+      const text = sorted.map((i) => article.paragraphs[i]).join('\n\n');
+      const key = `group-demo-${Date.now()}`;
+      demoKeyRef.current = key;
+      setParagraphOrder((prev) => [...prev, key]);
+      requestExplanation({
+        key,
+        type: 'paragraph',
+        text,
+        context: article.fullText,
+        title: article.title,
+        depth: 'eli5',
+        onComplete: (k, data) => {
+          const aid = currentArticleIdRef.current;
+          if (aid) saveExplanation(aid, 'paragraph', text, data.depth, data.explanation, data.concepts);
+        },
+      });
+      setSelectedIndices(new Set());
+      add(setTimeout(() => {
+        const el = explanationScrollRef.current[key];
+        el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 400));
+    };
+
+    // T=1s: show welcome for 3s
+    add(setTimeout(() => setDemoTooltip('Welcome to the Decode side-by-side reader!'), 1000));
+    // T=4s: welcome gone, show "Let's select the first two paragraphs" for 3s
+    add(setTimeout(() => setDemoTooltip("Let's select the first two paragraphs"), 4000));
+    // T=5s (1s after select message): select first paragraph
+    add(setTimeout(() => setSelectedIndices(new Set([0])), 5000));
+    // T=6s (2s after select message): select second paragraph
+    add(setTimeout(() => setSelectedIndices(new Set([0, 1])), 6000));
+    // T=7s: select message gone; branch on depth
+    add(setTimeout(() => {
+      const currentDepth = depthRef.current;
+      const needEli5 = currentDepth === 'standard' || currentDepth === 'technical';
+
+      if (needEli5) {
+        setDemoTooltip("Let's keep it simple for now");
+        setDepth('eli5');
+        // 3s later: show "Getting your explanation...", run explain, hide after 2s, theme tip 5s after that
+        add(setTimeout(() => {
+          setDemoTooltip('Getting your explanation...');
+          runExplain();
+          add(setTimeout(() => {
+            setDemoTooltip(null);
+            add(setTimeout(() => setShowDemoSettingsTip(true), 5000));
+          }, 2000));
+        }, 3000));
+      } else {
+        setDemoTooltip('Getting your explanation...');
+        runExplain();
+        add(setTimeout(() => {
+          setDemoTooltip(null);
+          add(setTimeout(() => setShowDemoSettingsTip(true), 5000));
+        }, 2000));
+      }
+    }, 7000));
+
+    return () => { demoTimeoutsRef.current.forEach(clearTimeout); demoTimeoutsRef.current = []; };
+  }, [isDemo, article, setDepth, requestExplanation, saveExplanation]);
 
   if (!article) return null;
 
