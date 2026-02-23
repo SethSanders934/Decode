@@ -49,7 +49,7 @@ export default function ArticlePane({
         </div>
         <div className="space-y-4">
           {paragraphs.map((text, index) => (
-            <div key={index} className="group">
+            <div key={index} className={`group ${index === 0 ? 'article-body-first' : ''}`}>
               <ParagraphBlock
                 index={index}
                 text={text}

@@ -16,7 +16,7 @@ export default function ParagraphBlock({
       }}
       className={`
         article-body py-2 pl-10 pr-2 -mx-1 rounded transition-colors duration-200 cursor-pointer relative
-        ${isSelected ? 'bg-decode-highlight border-l-4 border-decode-accent' : ''}
+        ${isSelected ? 'bg-decode-highlight border-l-4 border-decode-highlightBorder' : ''}
         hover:bg-decode-hover
       `}
     >

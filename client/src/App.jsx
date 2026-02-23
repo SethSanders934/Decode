@@ -1,9 +1,9 @@
 import { useState, useCallback } from 'react';
 import ArticleInput from './components/ArticleInput';
 import ReaderLayout from './components/ReaderLayout';
-import StatusPanel from './components/StatusPanel';
 import History from './components/History';
 import AuthModal from './components/AuthModal';
+import SettingsPanel from './components/SettingsPanel';
 import { useArticle } from './hooks/useArticle';
 import { useAuth } from './context/AuthContext';
 
@@ -12,6 +12,7 @@ export default function App() {
   const { user, fetchWithAuth, login, register, logout } = useAuth();
   const [view, setView] = useState('input');
   const [authMode, setAuthMode] = useState(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [initialReaderState, setInitialReaderState] = useState(null);
 
   const handleDecode = useCallback(
@@ -76,6 +77,7 @@ export default function App() {
           onRegisterClick={() => setAuthMode('register')}
           onLogout={logout}
           onHistoryClick={() => setView('history')}
+          onSettingsClick={() => setSettingsOpen(true)}
         />
       )}
       {view === 'history' && (
@@ -83,13 +85,23 @@ export default function App() {
           <div className="w-full max-w-2xl">
             <div className="flex items-center justify-between mb-6">
               <h1 className="text-xl font-semibold text-decode-article">Article history</h1>
-              <button
-                type="button"
-                onClick={() => setView('input')}
-                className="text-sm text-decode-accent hover:underline"
-              >
-                Back
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSettingsOpen(true)}
+                  className="p-2 rounded-decode-sm text-decode-muted hover:bg-decode-hover hover:text-decode-article transition-colors"
+                  aria-label="Settings"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setView('input')}
+                  className="text-sm text-decode-accent hover:underline"
+                >
+                  Back
+                </button>
+              </div>
             </div>
             <History onOpenArticle={handleOpenFromHistory} />
           </div>
@@ -104,6 +116,7 @@ export default function App() {
           user={user}
           initialExplanations={initialReaderState?.initialExplanations}
           initialParagraphOrder={initialReaderState?.initialParagraphOrder}
+          onSettingsClick={() => setSettingsOpen(true)}
         />
       )}
       {authMode && (
@@ -114,7 +127,7 @@ export default function App() {
           onRegister={register}
         />
       )}
-      <StatusPanel />
+      <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </>
   );
 }

@@ -1,3 +1,4 @@
+import { useSettings } from '../context/SettingsContext';
 import ExplanationCard from './ExplanationCard';
 import DepthToggle from './DepthToggle';
 
@@ -15,6 +16,8 @@ export default function ExplanationPane({
 }) {
   const isEmpty = paragraphOrder.length === 0;
   const showDebug = typeof window !== 'undefined' && window.location.search.includes('debug=1');
+  const { settings } = useSettings();
+  const isTerminal = settings.theme === 'terminal';
 
   return (
     <div className="flex flex-col h-full bg-decode-bg overflow-hidden">
@@ -28,7 +31,9 @@ export default function ExplanationPane({
             type="button"
             onClick={onExplainSelected}
             disabled={selectedCount === 0}
-            className="px-4 py-2 rounded-lg bg-decode-accent text-white text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-decode-tagText transition-colors"
+            className={`px-4 py-2 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${
+              isTerminal ? 'decode-cta' : 'rounded-decode bg-decode-accent text-white hover:bg-decode-tagText'
+            }`}
           >
             Explain selected {selectedCount > 0 ? `(${selectedCount})` : ''}
           </button>

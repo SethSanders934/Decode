@@ -4,10 +4,34 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Decode — Understand complex articles</title>
+    <script>
+      (function() {
+        var s = localStorage.getItem('decode_settings');
+        var theme = 'minimalist-ink';
+        var fontSize = 'medium';
+        var lineSpacing = 'normal';
+        var bold = false;
+        var dark = false;
+        if (s) try {
+          var o = JSON.parse(s);
+          if (o.theme) theme = o.theme;
+          if (o.fontSize) fontSize = o.fontSize;
+          if (o.lineSpacing) lineSpacing = o.lineSpacing;
+          if (o.bold != null) bold = o.bold;
+          if (o.dark != null) dark = o.dark;
+        } catch (_) {}
+        document.documentElement.dataset.theme = theme;
+        document.documentElement.dataset.fontSize = fontSize;
+        document.documentElement.dataset.lineSpacing = lineSpacing;
+        document.documentElement.dataset.bold = bold ? 'true' : 'false';
+        document.documentElement.dataset.dark = dark ? 'true' : 'false';
+      })();
+    </script>
+    <link rel="stylesheet" href="/src/theme.css" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Merriweather:wght@400;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500&family=Lora:wght@400;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,700&family=Playfair+Display:wght@400;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=Merriweather:wght@400;700&family=Nunito:wght@400;600;700&family=Quicksand:wght@400;600&family=Space+Grotesk:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
   </head>

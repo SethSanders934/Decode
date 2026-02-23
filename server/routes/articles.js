@@ -60,4 +60,20 @@ router.get('/:id', authMiddleware, (req, res) => {
   });
 });
 
+router.delete('/all', authMiddleware, (req, res) => {
+  db.prepare('DELETE FROM explanations WHERE article_id IN (SELECT id FROM articles WHERE user_id = ?)').run(req.userId);
+  db.prepare('DELETE FROM articles WHERE user_id = ?').run(req.userId);
+  res.status(204).send();
+});
+
+router.delete('/:id', authMiddleware, (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (!id) return res.status(400).json({ error: 'Invalid id' });
+  const row = db.prepare('SELECT id FROM articles WHERE id = ? AND user_id = ?').get(id, req.userId);
+  if (!row) return res.status(404).json({ error: 'Article not found' });
+  db.prepare('DELETE FROM explanations WHERE article_id = ?').run(id);
+  db.prepare('DELETE FROM articles WHERE id = ?').run(id);
+  res.status(204).send();
+});
+
 export default router;

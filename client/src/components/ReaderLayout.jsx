@@ -2,7 +2,6 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import Header from './Header';
 import ArticlePane from './ArticlePane';
 import ExplanationPane from './ExplanationPane';
-import DepthToggle from './DepthToggle';
 import { useArticle } from '../hooks/useArticle';
 import { useExplanation } from '../hooks/useExplanation';
 import { useTextSelection } from '../hooks/useTextSelection';
@@ -18,6 +17,7 @@ export default function ReaderLayout({
   user,
   initialExplanations,
   initialParagraphOrder,
+  onSettingsClick,
 }) {
   const [selectedIndices, setSelectedIndices] = useState(new Set());
   const [paragraphOrder, setParagraphOrder] = useState(initialParagraphOrder || []);
@@ -43,7 +43,7 @@ export default function ReaderLayout({
   }, [initialParagraphOrder, initialExplanations, setExplanations]);
 
   useEffect(() => {
-    if (!article || !user || article.id) return;
+    if (!article || !user || article.id || article.title === 'Pasted article') return;
     let cancelled = false;
     fetchWithAuth('/api/articles', {
       method: 'POST',
@@ -183,9 +183,7 @@ export default function ReaderLayout({
 
   return (
     <div className="flex flex-col h-screen bg-decode-bg">
-      <Header title={article.title} source={article.source} onBack={onBack}>
-        <DepthToggle value={depth} onChange={setDepth} />
-      </Header>
+      <Header title={article.title} source={article.source} onBack={onBack} onSettingsClick={onSettingsClick} />
       <div className="flex-1 flex min-h-0 md:flex-row flex-col">
         <div className="md:w-[55%] w-full flex flex-col min-h-0 border-r border-decode-cardBorder">
           <ArticlePane
