@@ -147,5 +147,15 @@ Using **decode.sethtsanders.me** is the same difficulty as using the root domain
 - **Auth / “Not authenticated”**  
   Users must use the same origin (decode.sethtsanders.me) so cookies/Authorization and the proxy all line up. Don’t mix `localhost` and production in the same flow.
 
-- **Railway “Application failed”**  
-  Confirm Root Directory is `server`, Start Command is `node index.js`, and `GROQ_API_KEY` and `JWT_SECRET` are set in Variables.
+- **Railway “Application failed” / Status shows “Server: Failed”**  
+  1. **Railway dashboard**  
+     - **Settings** → **Root Directory**: must be `server` (so `package.json` and `index.js` are in the build context).  
+     - **Settings** → **Build**: use default or `npm ci`; **Start**: `npm start` or `node index.js`.  
+     - **Variables**: `GROQ_API_KEY` and `JWT_SECRET` must be set.  
+  2. **Check deploy logs**  
+     In Railway, open your service → **Deployments** → latest deploy → **View logs**. Look for “Decode API server running” and any errors (e.g. `better-sqlite3` build failures or missing env).  
+  3. **Test the backend by URL**  
+     Replace `YOUR_RAILWAY_URL` with your real URL (e.g. `https://decode-production-40d1.up.railway.app`):  
+     - In browser or with curl: `https://YOUR_RAILWAY_URL/` → should return `{"ok":true,"service":"decode-api",...}`.  
+     - `https://YOUR_RAILWAY_URL/api/status` → should return `{"server":"ok",...}`.  
+     If those work, the backend is up; the frontend at decode.sethtsanders.me will then reach it via the Vercel proxy. If they don’t, fix Railway (root dir, env, logs) first.

@@ -19,6 +19,11 @@ const PORT = process.env.PORT || 3001;
 
 app.use(cors());
 app.use(express.json());
+
+// Root and health: so Railway / browser GET to base URL gets a response
+app.get('/', (_req, res) => res.json({ ok: true, service: 'decode-api', use: '/api/status for health' }));
+app.get('/api', (_req, res) => res.json({ ok: true, service: 'decode-api', use: '/api/status for health' }));
+
 app.use('/api/explain', explainRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/articles', authMiddleware, articlesRoutes);
@@ -79,8 +84,8 @@ app.use((err, _req, res, _next) => {
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`Decode API server running at http://localhost:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Decode API server running at http://0.0.0.0:${PORT}`);
   console.log(`Open the app in your browser at http://localhost:5173 (or 5174 if 5173 is in use)`);
   if (!process.env.GROQ_API_KEY) {
     console.log('');
