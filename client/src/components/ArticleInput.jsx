@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useSettings } from '../context/SettingsContext';
+import { DEMO_ARTICLE_TEXT } from '../constants/demoArticle';
 
 function SettingsIcon() {
   return (
@@ -21,6 +22,12 @@ export default function ArticleInput({ onDecode, loading, user, onLoginClick, on
     if (!raw) return;
     setError(null);
     onDecode({ type: 'text', value: raw });
+  };
+
+  const handleDemo = () => {
+    setError(null);
+    setInput(DEMO_ARTICLE_TEXT);
+    onDecode({ type: 'text', value: DEMO_ARTICLE_TEXT, demo: true });
   };
 
   return (
@@ -91,18 +98,28 @@ export default function ArticleInput({ onDecode, loading, user, onLoginClick, on
           {error && (
             <p className="text-sm text-red-600 mt-2">{error}</p>
           )}
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={loading || !input.trim()}
-            className={`mt-4 w-full py-3 px-4 font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${
-              isTerminal
-                ? 'rounded-none border border-decode-accent bg-transparent text-decode-accent hover:bg-decode-accent hover:text-decode-bg'
-                : 'bg-decode-accent text-white rounded-decode hover:bg-decode-accent-hover shadow-decode'
-            }`}
-          >
-            Decode
-          </button>
+          <div className="mt-4 flex gap-3">
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={loading || !input.trim()}
+              className={`flex-1 py-3 px-4 font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${
+                isTerminal
+                  ? 'rounded-none border border-decode-accent bg-transparent text-decode-accent hover:bg-decode-accent hover:text-decode-bg'
+                  : 'bg-decode-accent text-white rounded-decode hover:bg-decode-accent-hover shadow-decode'
+              }`}
+            >
+              Decode
+            </button>
+            <button
+              type="button"
+              onClick={handleDemo}
+              disabled={loading}
+              className="shrink-0 py-3 px-5 font-medium rounded-full border border-decode-cardBorder bg-decode-card text-decode-article hover:bg-decode-hover transition-colors"
+            >
+              Demo
+            </button>
+          </div>
         </div>
       </div>
     </>

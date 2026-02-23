@@ -17,6 +17,7 @@ export default function ReaderLayout({
   user,
   initialExplanations,
   initialParagraphOrder,
+  isDemo,
   onSettingsClick,
 }) {
   const [selectedIndices, setSelectedIndices] = useState(new Set());
@@ -26,6 +27,11 @@ export default function ReaderLayout({
   const explanationScrollRef = useRef({});
   const articleContainerRef = useRef(null);
   const [depth, setDepth] = useLocalStorage(DEPTH_KEY, 'standard');
+  const demoExplainTriggeredRef = useRef(false);
+  const demoKeyRef = useRef(null);
+  const demoSettingTipShownRef = useRef(false);
+  const [demoTooltip, setDemoTooltip] = useState(null);
+  const [showDemoSettingsTip, setShowDemoSettingsTip] = useState(false);
 
   const {
     explanations,
@@ -42,14 +48,17 @@ export default function ReaderLayout({
     }
   }, [initialParagraphOrder, initialExplanations, setExplanations]);
 
+  // Create article as soon as we're in the reader (logged in, no id yet) so we have an id for explanations.
+  // Use "Untitled" until suggest-title returns, then we'll PATCH the title.
   useEffect(() => {
-    if (!article || !user || article.id || article.title === 'Pasted article') return;
+    if (!article || !user || article.id) return;
     let cancelled = false;
+    const titleToSave = article.title === 'Pasted article' ? 'Untitled' : article.title;
     fetchWithAuth('/api/articles', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        title: article.title,
+        title: titleToSave,
         fullText: article.fullText,
         paragraphs: article.paragraphs,
       }),
@@ -63,7 +72,7 @@ export default function ReaderLayout({
       })
       .catch(() => {});
     return () => { cancelled = true; };
-  }, [article?.title, article?.fullText, user, fetchWithAuth]);
+  }, [article?.id, article?.fullText, article?.paragraphs, user, fetchWithAuth]);
 
   const { selection, position: selectionPosition, clearSelection } = useTextSelection(articleContainerRef);
 
@@ -78,6 +87,7 @@ export default function ReaderLayout({
     currentArticleIdRef.current = currentArticleId;
   }, [currentArticleId]);
 
+  // Suggest title from Groq; when we get it, update local state and PATCH the saved article so history shows the named title.
   useEffect(() => {
     if (!article || article.title !== 'Pasted article' || !article.fullText) return;
     let cancelled = false;
@@ -93,6 +103,19 @@ export default function ReaderLayout({
       .catch(() => {});
     return () => { cancelled = true; };
   }, [article?.fullText, article?.title, updateTitle]);
+
+  // When we have a suggested title and a saved article id, PATCH so history shows the named title.
+  useEffect(() => {
+    const id = currentArticleId;
+    if (!article || !id || article.title === 'Pasted article' || article.title === 'Untitled') return;
+    let cancelled = false;
+    fetchWithAuth(`/api/articles/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: article.title }),
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [article?.title, currentArticleId, fetchWithAuth]);
 
   const toggleParagraph = useCallback((index) => {
     setSelectedIndices((prev) => {
@@ -179,10 +202,86 @@ export default function ReaderLayout({
     [article, depth, requestExplanation, clearSelection, saveExplanation]
   );
 
+  // Demo mode: auto-select first two paragraphs, set ELI5, then trigger explain.
+  useEffect(() => {
+    if (!isDemo || !article?.paragraphs?.length) return;
+    setDemoTooltip('Loading your article…');
+    const t1 = setTimeout(() => {
+      setDemoTooltip('Selecting the first two paragraphs…');
+      setSelectedIndices(new Set([0, 1]));
+      setDepth('eli5');
+    }, 1200);
+    const t2 = setTimeout(() => setDemoTooltip('Choosing ELI5 for a simple summary…'), 2200);
+    const t3 = setTimeout(() => setDemoTooltip('Getting your explanation…'), 3200);
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+  }, [isDemo, article?.paragraphs?.length, setDepth]);
+
+  useEffect(() => {
+    if (!isDemo || !article || selectedIndices.size !== 2 || demoExplainTriggeredRef.current) return;
+    if (!selectedIndices.has(0) || !selectedIndices.has(1)) return;
+    demoExplainTriggeredRef.current = true;
+    const sorted = [0, 1];
+    const text = sorted.map((i) => article.paragraphs[i]).join('\n\n');
+    const key = `group-demo-${Date.now()}`;
+    demoKeyRef.current = key;
+    setParagraphOrder((prev) => [...prev, key]);
+    requestExplanation({
+      key,
+      type: 'paragraph',
+      text,
+      context: article.fullText,
+      title: article.title,
+      depth: 'eli5',
+      onComplete: (k, data) => {
+        const aid = currentArticleIdRef.current;
+        if (aid) saveExplanation(aid, 'paragraph', text, data.depth, data.explanation, data.concepts);
+      },
+    });
+    setSelectedIndices(new Set());
+    setTimeout(() => {
+      const el = explanationScrollRef.current[key];
+      el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 400);
+  }, [isDemo, article, selectedIndices, requestExplanation, saveExplanation]);
+
+  // When demo explanation finishes streaming, show the settings tip once.
+  useEffect(() => {
+    if (!isDemo || !demoKeyRef.current || demoSettingTipShownRef.current) return;
+    const key = demoKeyRef.current;
+    const data = explanations[key];
+    if (!data || data.streaming) return;
+    demoSettingTipShownRef.current = true;
+    const t = setTimeout(() => {
+      setDemoTooltip(null);
+      setShowDemoSettingsTip(true);
+    }, 800);
+    return () => clearTimeout(t);
+  }, [isDemo, explanations]);
+
   if (!article) return null;
 
   return (
-    <div className="flex flex-col h-screen bg-decode-bg">
+    <div className="flex flex-col h-screen bg-decode-bg relative">
+      {demoTooltip && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+          <div className="px-4 py-2 rounded-full bg-decode-article text-white text-sm shadow-decode-lg animate-fade-in">
+            {demoTooltip}
+          </div>
+        </div>
+      )}
+      {showDemoSettingsTip && (
+        <div className="fixed top-14 right-14 z-50 max-w-xs p-4 rounded-decode bg-decode-card border border-decode-cardBorder shadow-decode-lg animate-fade-in">
+          <p className="text-sm text-decode-article font-medium mb-1">Don&apos;t like the look?</p>
+          <p className="text-sm text-decode-muted">Don&apos;t worry, there are six other options! Open <strong>Settings</strong> (gear icon in the top right) to try different themes.</p>
+          <button
+            type="button"
+            onClick={() => setShowDemoSettingsTip(false)}
+            className="mt-3 text-xs text-decode-accent hover:underline"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
       <Header title={article.title} source={article.source} onBack={onBack} onSettingsClick={onSettingsClick} />
       <div className="flex-1 flex min-h-0 md:flex-row flex-col">
         <div className="md:w-[55%] w-full flex flex-col min-h-0 border-r border-decode-cardBorder">

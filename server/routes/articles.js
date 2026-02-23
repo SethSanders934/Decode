@@ -32,6 +32,24 @@ router.get('/', authMiddleware, (req, res) => {
   res.json({ articles: rows });
 });
 
+router.patch('/:id', authMiddleware, (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (!id) return res.status(400).json({ error: 'Invalid id' });
+  const { title } = req.body || {};
+  if (!title || typeof title !== 'string') return res.status(400).json({ error: 'title required' });
+  const row = db.prepare('SELECT id FROM articles WHERE id = ? AND user_id = ?').get(id, req.userId);
+  if (!row) return res.status(404).json({ error: 'Article not found' });
+  db.prepare('UPDATE articles SET title = ? WHERE id = ?').run(title.trim(), id);
+  const updated = db.prepare('SELECT id, title, full_text, paragraphs_json, created_at FROM articles WHERE id = ?').get(id);
+  res.json({
+    id: updated.id,
+    title: updated.title,
+    fullText: updated.full_text,
+    paragraphs: JSON.parse(updated.paragraphs_json),
+    createdAt: updated.created_at,
+  });
+});
+
 router.get('/:id', authMiddleware, (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (!id) return res.status(400).json({ error: 'Invalid id' });

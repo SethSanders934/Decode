@@ -16,11 +16,11 @@ export default function App() {
   const [initialReaderState, setInitialReaderState] = useState(null);
 
   const handleDecode = useCallback(
-    ({ type, value }) => {
+    ({ type, value, demo }) => {
       if (type === 'text') {
         loadFromText(value);
         setView('reader');
-        setInitialReaderState(null);
+        setInitialReaderState(demo ? { isDemo: true } : null);
       }
     },
     [loadFromText]
@@ -116,6 +116,7 @@ export default function App() {
           user={user}
           initialExplanations={initialReaderState?.initialExplanations}
           initialParagraphOrder={initialReaderState?.initialParagraphOrder}
+          isDemo={initialReaderState?.isDemo}
           onSettingsClick={() => setSettingsOpen(true)}
         />
       )}
