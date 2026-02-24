@@ -25,6 +25,7 @@ export default function ReaderLayout({
   const [paragraphOrder, setParagraphOrder] = useState(initialParagraphOrder || []);
   const [currentArticleId, setCurrentArticleId] = useState(article?.id || null);
   const currentArticleIdRef = useRef(article?.id || null);
+  const createArticlePromiseRef = useRef(null);
   const explanationScrollRef = useRef({});
   const articleContainerRef = useRef(null);
   const [depth, setDepth] = useLocalStorage(DEPTH_KEY, 'standard');
@@ -52,8 +53,36 @@ export default function ReaderLayout({
     }
   }, [initialParagraphOrder, initialExplanations, setExplanations]);
 
-  // Create article as soon as we're in the reader (logged in, no id yet) so we have an id for explanations.
-  // Use "Untitled" until suggest-title returns, then we'll PATCH the title.
+  // Ensure we have an article id (create if logged in and not yet saved). Used by explain handlers as fallback.
+  const ensureArticleId = useCallback(async () => {
+    if (currentArticleIdRef.current) return currentArticleIdRef.current;
+    if (!user || !article) return null;
+    if (createArticlePromiseRef.current) return createArticlePromiseRef.current;
+    const titleToSave = article.title === 'Pasted article' ? 'Untitled' : article.title;
+    const promise = fetchWithAuth('/api/articles', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: titleToSave,
+        fullText: article.fullText,
+        paragraphs: article.paragraphs,
+      }),
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data?.id) {
+          setCurrentArticleId(data.id);
+          currentArticleIdRef.current = data.id;
+        }
+        return data?.id ?? null;
+      })
+      .catch(() => null)
+      .finally(() => { createArticlePromiseRef.current = null; });
+    createArticlePromiseRef.current = promise;
+    return promise;
+  }, [article, user, fetchWithAuth]);
+
+  // Create article as soon as we're in the reader (logged in, no id yet) so it appears in history.
   useEffect(() => {
     if (!article || !user || article.id) return;
     let cancelled = false;
@@ -69,7 +98,7 @@ export default function ReaderLayout({
     })
       .then((r) => r.json())
       .then((data) => {
-        if (!cancelled && data.id) {
+        if (!cancelled && data?.id) {
           setCurrentArticleId(data.id);
           currentArticleIdRef.current = data.id;
         }
@@ -158,8 +187,9 @@ export default function ReaderLayout({
     [fetchWithAuth]
   );
 
-  const handleExplainSelected = useCallback(() => {
+  const handleExplainSelected = useCallback(async () => {
     if (!article || selectedIndices.size === 0) return;
+    const aid = await ensureArticleId();
     const sorted = [...selectedIndices].sort((a, b) => a - b);
     const text = sorted.map((i) => article.paragraphs[i]).join('\n\n');
     const key = `group-${Date.now()}`;
@@ -172,8 +202,8 @@ export default function ReaderLayout({
       title: article.title,
       depth,
       onComplete: (k, data) => {
-        const aid = currentArticleIdRef.current;
-        if (aid) saveExplanation(aid, 'paragraph', text, data.depth, data.explanation, data.concepts);
+        const id = currentArticleIdRef.current ?? aid;
+        if (id) saveExplanation(id, 'paragraph', text, data.depth, data.explanation, data.concepts);
       },
     });
     setSelectedIndices(new Set());
@@ -181,10 +211,11 @@ export default function ReaderLayout({
       const el = explanationScrollRef.current[key];
       el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 300);
-  }, [article, selectedIndices, depth, requestExplanation, saveExplanation]);
+  }, [article, selectedIndices, depth, requestExplanation, saveExplanation, ensureArticleId]);
 
   const handleExplainHighlight = useCallback(
-    (selectedText, _ignored) => {
+    async (selectedText, _ignored) => {
+      const aid = await ensureArticleId();
       const key = `h-${Date.now()}`;
       const surrounding = article.paragraphs.find((p) => p.includes(selectedText)) || article.paragraphs[0] || '';
       setParagraphOrder((prev) => [...prev, key]);
@@ -198,12 +229,12 @@ export default function ReaderLayout({
         depth,
         isHighlight: true,
         onComplete: (k, data) => {
-          const aid = currentArticleIdRef.current;
-          if (aid) saveExplanation(aid, 'highlight', selectedText, data.depth, data.explanation, data.concepts);
+          const id = currentArticleIdRef.current ?? aid;
+          if (id) saveExplanation(id, 'highlight', selectedText, data.depth, data.explanation, data.concepts);
         },
       });
     },
-    [article, depth, requestExplanation, clearSelection, saveExplanation]
+    [article, depth, requestExplanation, clearSelection, saveExplanation, ensureArticleId]
   );
 
   // Demo mode: timed sequence — wait 1s, welcome 3s, select paragraphs (message 3s, select at 1s and 2s), then depth/explain, then theme tip 5s after "Getting..." is gone.
@@ -214,9 +245,10 @@ export default function ReaderLayout({
     ids.length = 0;
     const add = (id) => { ids.push(id); return id; };
 
-    const runExplain = () => {
+    const runExplain = async () => {
       if (demoExplainTriggeredRef.current) return;
       demoExplainTriggeredRef.current = true;
+      await ensureArticleId();
       const sorted = [0, 1];
       const text = sorted.map((i) => article.paragraphs[i]).join('\n\n');
       const key = `group-demo-${Date.now()}`;
@@ -260,7 +292,7 @@ export default function ReaderLayout({
         // 3s later: show "Getting your explanation...", run explain, hide after 2s, theme tip 5s after that
         add(setTimeout(() => {
           setDemoTooltip('Getting your explanation...');
-          runExplain();
+          runExplain().catch(() => {});
           add(setTimeout(() => {
             setDemoTooltip(null);
             add(setTimeout(() => setShowDemoSettingsTip(true), 5000));
@@ -268,7 +300,7 @@ export default function ReaderLayout({
         }, 3000));
       } else {
         setDemoTooltip('Getting your explanation...');
-        runExplain();
+        runExplain().catch(() => {});
         add(setTimeout(() => {
           setDemoTooltip(null);
           add(setTimeout(() => setShowDemoSettingsTip(true), 5000));
@@ -277,7 +309,7 @@ export default function ReaderLayout({
     }, 7000));
 
     return () => { demoTimeoutsRef.current.forEach(clearTimeout); demoTimeoutsRef.current = []; };
-  }, [isDemo, article, setDepth, requestExplanation, saveExplanation]);
+  }, [isDemo, article, setDepth, requestExplanation, saveExplanation, ensureArticleId]);
 
   if (!article) return null;
 
