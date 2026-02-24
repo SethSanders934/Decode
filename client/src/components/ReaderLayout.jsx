@@ -19,6 +19,7 @@ export default function ReaderLayout({
   initialParagraphOrder,
   isDemo,
   onSettingsClick,
+  onDonationsClick,
 }) {
   const [selectedIndices, setSelectedIndices] = useState(new Set());
   const [paragraphOrder, setParagraphOrder] = useState(initialParagraphOrder || []);
@@ -302,7 +303,7 @@ export default function ReaderLayout({
           </button>
         </div>
       )}
-      <Header title={article.title} source={article.source} onBack={onBack} onSettingsClick={onSettingsClick} />
+      <Header title={article.title} source={article.source} onBack={onBack} onSettingsClick={onSettingsClick} onDonationsClick={onDonationsClick} />
       <div className="flex-1 flex min-h-0 md:flex-row flex-col">
         <div className="md:w-[55%] w-full flex flex-col min-h-0 border-r border-decode-cardBorder">
           <ArticlePane

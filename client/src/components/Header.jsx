@@ -7,7 +7,7 @@ function SettingsIcon() {
   );
 }
 
-export default function Header({ title, source, onBack, onSettingsClick, children }) {
+export default function Header({ title, source, onBack, onSettingsClick, onDonationsClick, children }) {
   return (
     <header className="flex items-center justify-between gap-4 px-4 py-3 border-b border-decode-cardBorder bg-decode-card shrink-0 shadow-decode">
       <div className="flex items-center gap-3 min-w-0">
@@ -30,6 +30,15 @@ export default function Header({ title, source, onBack, onSettingsClick, childre
         </div>
       </div>
       <div className="flex items-center gap-2 shrink-0">
+        {onDonationsClick && (
+          <button
+            type="button"
+            onClick={onDonationsClick}
+            className="text-sm text-decode-muted hover:text-decode-accent hover:underline"
+          >
+            Donations
+          </button>
+        )}
         {onSettingsClick && (
           <button
             type="button"

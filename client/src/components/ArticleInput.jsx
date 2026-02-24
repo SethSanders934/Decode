@@ -11,7 +11,7 @@ function SettingsIcon() {
   );
 }
 
-export default function ArticleInput({ onDecode, loading, user, onLoginClick, onRegisterClick, onLogout, onHistoryClick, onSettingsClick }) {
+export default function ArticleInput({ onDecode, loading, user, onLoginClick, onRegisterClick, onLogout, onHistoryClick, onSettingsClick, onDonationsClick }) {
   const [input, setInput] = useState('');
   const [error, setError] = useState(null);
   const { settings } = useSettings();
@@ -35,6 +35,15 @@ export default function ArticleInput({ onDecode, loading, user, onLoginClick, on
       <div className="landing-bg" aria-hidden />
       <div className="min-h-screen flex flex-col items-center justify-start pt-16 px-4 relative">
         <div className="absolute top-4 right-4 flex items-center gap-3">
+          {onDonationsClick && (
+            <button
+              type="button"
+              onClick={onDonationsClick}
+              className="text-sm text-decode-muted hover:text-decode-accent hover:underline"
+            >
+              Donations
+            </button>
+          )}
           {onSettingsClick && (
             <button
               type="button"

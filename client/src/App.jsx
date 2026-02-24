@@ -4,6 +4,7 @@ import ReaderLayout from './components/ReaderLayout';
 import History from './components/History';
 import AuthModal from './components/AuthModal';
 import SettingsPanel from './components/SettingsPanel';
+import DonationsModal from './components/DonationsModal';
 import { useArticle } from './hooks/useArticle';
 import { useAuth } from './context/AuthContext';
 
@@ -13,6 +14,7 @@ export default function App() {
   const [view, setView] = useState('input');
   const [authMode, setAuthMode] = useState(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [donationsOpen, setDonationsOpen] = useState(false);
   const [initialReaderState, setInitialReaderState] = useState(null);
 
   const handleDecode = useCallback(
@@ -78,6 +80,7 @@ export default function App() {
           onLogout={logout}
           onHistoryClick={() => setView('history')}
           onSettingsClick={() => setSettingsOpen(true)}
+          onDonationsClick={() => setDonationsOpen(true)}
         />
       )}
       {view === 'history' && (
@@ -86,6 +89,13 @@ export default function App() {
             <div className="flex items-center justify-between mb-6">
               <h1 className="text-xl font-semibold text-decode-article">Article history</h1>
               <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDonationsOpen(true)}
+                  className="text-sm text-decode-muted hover:text-decode-accent hover:underline"
+                >
+                  Donations
+                </button>
                 <button
                   type="button"
                   onClick={() => setSettingsOpen(true)}
@@ -118,8 +128,10 @@ export default function App() {
           initialParagraphOrder={initialReaderState?.initialParagraphOrder}
           isDemo={initialReaderState?.isDemo}
           onSettingsClick={() => setSettingsOpen(true)}
+          onDonationsClick={() => setDonationsOpen(true)}
         />
       )}
+      <DonationsModal open={donationsOpen} onClose={() => setDonationsOpen(false)} />
       {authMode && (
         <AuthModal
           mode={authMode}
