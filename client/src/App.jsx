@@ -5,6 +5,7 @@ import History from './components/History';
 import AuthModal from './components/AuthModal';
 import SettingsPanel from './components/SettingsPanel';
 import DonationsModal from './components/DonationsModal';
+import AboutModal from './components/AboutModal';
 import { useArticle } from './hooks/useArticle';
 import { useAuth } from './context/AuthContext';
 
@@ -15,6 +16,7 @@ export default function App() {
   const [authMode, setAuthMode] = useState(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [donationsOpen, setDonationsOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
   const [initialReaderState, setInitialReaderState] = useState(null);
 
   const handleDecode = useCallback(
@@ -81,8 +83,10 @@ export default function App() {
           onHistoryClick={() => setView('history')}
           onSettingsClick={() => setSettingsOpen(true)}
           onDonationsClick={() => setDonationsOpen(true)}
+          onAboutClick={() => setAboutOpen(true)}
         />
       )}
+      <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
       {view === 'history' && (
         <div className="min-h-screen bg-decode-bg flex flex-col items-center pt-16 px-4">
           <div className="w-full max-w-2xl">
